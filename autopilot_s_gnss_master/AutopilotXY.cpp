@@ -195,41 +195,33 @@ void AutopilotXY::Init() {
 }
 
 bool AutopilotXY::UpdatePosition() {
-  static bool needRMC = false;
-  bool result = true;
   static unsigned int prevTime = millis();
+  static bool needRMC = false;
+  bool isSucceed = true;
 
   if(RemoteXY.connect_flag == 0)
     return false;
 
   if(needRMC) {
     if(_gnssParser.ParseGNRMC()) {
-      _isPositionRecived = true;
-      _isFirstPositionRecived = true;
-      _needPositionPostprosses = true;
       UpdateRmcInformation();
       prevTime = millis();
     }
     else {
       Serial.println("GNRMC reading failed...");
-      result = false;
+      isSucceed = false;
     }
     needRMC = false;
   }
   else {   
     if(_gnssParser.ParseGNGGA()) {
-      _isPositionRecived = true;
-      _isFirstPositionRecived = true;
-      _needPositionPostprosses = true;
-      
       UpdateGgaInformation();
       prevTime = millis();
     }
     else {
       Serial.println("GNGGA reading failed...");
-      result = false;
+      isSucceed = false;
     }
-    
     needRMC = true;
   }
 
@@ -241,7 +233,7 @@ bool AutopilotXY::UpdatePosition() {
   }
 
   unsigned int currentTime = millis();
-  if(_isFirstPositionRecived && ((currentTime - prevTime) > 3000))
+  if(_isPositionRecived && ((currentTime - prevTime) > 3000))
   {
     Serial.println("timeot gnss");
     _isPositionRecived = false;
@@ -253,11 +245,13 @@ bool AutopilotXY::UpdatePosition() {
     strcpy(RemoteXY.sGnssCourse, NA_STRING);
     strcpy(RemoteXY.sAccuracy, NA_STRING);
   }
-
-  return result;
+  
+  return isSucceed;
 }
 
 void AutopilotXY::UpdateGgaInformation() {
+  _isPositionRecived = true;
+  _needPositionPostprosses = true;
   
   strcpy(RemoteXY.sCurrentLatitude, _gnssParser.GetLatitudeStr());
   strcpy(RemoteXY.sCurrentLongitude, _gnssParser.GetLongitudeStr());
@@ -306,6 +300,9 @@ void AutopilotXY::UpdateGgaInformation() {
 }
 
 void AutopilotXY::UpdateRmcInformation() {
+  _isPositionRecived = true;
+  _needPositionPostprosses = true;
+      
   strcpy(RemoteXY.sCurrentLatitude, _gnssParser.GetLatitudeStr());
   strcpy(RemoteXY.sCurrentLongitude, _gnssParser.GetLongitudeStr());
 
@@ -324,34 +321,18 @@ void AutopilotXY::UpdateRmcInformation() {
   else {
     strcpy(RemoteXY.sGnssCourse, _gnssParser.GetHeadingStr());
   }
-
-  if(strlen(_gnssParser.GetMagneticsStr()) != 0)
-  {
-    Serial.print("Magnetic Declination: ");
-    Serial.println(_gnssParser.GetMagneticsStr());
-  }
 }
 
 void AutopilotXY::UpdateUI() {
   
-  ProcessPhysicalButtons();
-  
+  //здесь обрабатываються нажатия кнопок
+  UpdatePhysicalButtons();
+  UpdateUIButtonsAndText();
+
   //звук нажатия кнопки выкл
   SoundUpdate();
   
   RemoteXY_Handler ();
-  
-  static bool is_top_switch = false;
-  if(RemoteXY.top_switch == 0 && is_top_switch)
-  {
-    is_top_switch = false;
-    SoundStart();
-  }
-  else if(RemoteXY.top_switch == 1 && !is_top_switch)
-  {
-    is_top_switch = true;
-    SoundStart();
-  }
   
   //если смартфон потерял соединение или верхиний переключатель выключен - дальше вычисления не выполняем
   if(RemoteXY.top_switch == 0 || RemoteXY.connect_flag == 0)
@@ -366,19 +347,23 @@ void AutopilotXY::UpdateUI() {
     
     return;
   }
-
-  //здесь обрабатываються нажатия кнопок
-  ProcessUIButtons();
+  
   //действия с поправкой курса в этой функции
-  ProcessUICourseCorrection();
+  UpdateUICourseCorrection();
 
   //если ручное управление включено - продолжаем цикл
-  if(RemoteXY.manual_switch == 0) {
+  if(RemoteXY.manual_switch == 0 || 
+      (!_isPositionRecived && RemoteXY.start_gnnss_pushSwitch == 1)) {
     return;
   }
 
-  if(_isPointASet && _isPointBSet) {
+  if(_isPointASet && _isPointBSet && _isPositionRecived && RemoteXY.start_gnnss_pushSwitch == 1) {
     SetCourseFromCoorinates();
+  }
+
+  if(_reversCoeff == -1)
+  {
+    RemoteXY.course_to_go += 180;
   }
 
   //переводим значения курса
@@ -408,21 +393,14 @@ void AutopilotXY::UpdateUI() {
     diff += 360;
   }
 
-  //обнуляем все поправки курса
-  if(diff == 0)
-  {
-    _courseCorrection = 0;
-    strcpy(RemoteXY.sLeftCourseCorrection, "0");
-    strcpy(RemoteXY.sRightCourseCorrection, "0");
-  }
-
   SetWheelAngle(diff);
 }
 
-void AutopilotXY::ProcessUIButtons() {
+void AutopilotXY::UpdateUIButtonsAndText() {
   static bool is_autopilot_on = false;
   static bool is_gnss_on = false;
-  
+  static bool is_top_switch = false;
+
   //отображаем положение руля на смартфон
   dtostrf(_wheelHandler.GetWheelPosition(), 3, 0, RemoteXY.sWheelPosition);
 
@@ -434,28 +412,53 @@ void AutopilotXY::ProcessUIButtons() {
     prevAgression = RemoteXY.agress;
   }
 
-  //установка центра руля
+    //установка центра руля
   static uint16_t prevCenter;
   if(prevCenter != RemoteXY.resistor_center) {
     _wheelHandler.SetWheelCenter(RemoteXY.resistor_center);
     prevCenter = RemoteXY.resistor_center;
   }
-  
-  //присваиваем текущее значение с резистора как центральное
-  if(RemoteXY.center == 1)
+    
+  if(RemoteXY.top_switch == 0 && is_top_switch)
   {
-    RemoteXY.resistor_center = prevCenter = _wheelHandler.SetWheelCenter();
-    RemoteXY.center = 0;
+    is_top_switch = false;
     SoundStart();
   }
+  else if(RemoteXY.top_switch == 1 && !is_top_switch)
+  {
+    is_top_switch = true;
+    SoundStart();
+  }
+
+  if(RemoteXY.top_switch == 0)
+  {
+    return;
+  }
+  
   //назначаем текущий курс, как заданный курс
   else if(RemoteXY.calibrate == 1)
   {
+    _courseCorrection = 0;
+    strcpy(RemoteXY.sLeftCourseCorrection, "0");
+    strcpy(RemoteXY.sRightCourseCorrection, "0");
+    
     RemoteXY.course_to_go = (int)RemoteXY.compass_course;
 
     if(_isPointASet && _isPointASet) {
-      RemoteXY.declonation = _calculationHelper.GetRowDirection() - RemoteXY.compass_course;
-      //переводим значения которые 
+      
+      if(RemoteXY.declonation == 0) {
+        RemoteXY.declonation = _calculationHelper.GetRowDirection() - RemoteXY.compass_course;
+      }
+      else {
+        float oldOffset = RemoteXY.compass_course + RemoteXY.declonation - _calculationHelper.GetRowDirection();
+        RemoteXY.declonation = _calculationHelper.GetRowDirection() - RemoteXY.compass_course;
+        if(oldOffset < -90 && oldOffset > 90)
+        {
+          RemoteXY.declonation += 180;
+        }
+        
+      }
+      //переводим значения которые
       //больше 180 в пределы (-180; 180)
       while(RemoteXY.declonation > 180)
       {
@@ -465,21 +468,21 @@ void AutopilotXY::ProcessUIButtons() {
       {
         RemoteXY.declonation += 360;
       }
-
-      //поправка если стоим с другого конца ряда
-      //if(RemoteXY.declonation < -90)
-      //{
-        //RemoteXY.declonation += 180;
-      //}
-      //else if(RemoteXY.declonation > 90)
-      //{
-        //RemoteXY.declonation -= 180;
-      //}
     }
-    
+
+    RemoteXY.center = 1;
     RemoteXY.calibrate = 0;
     SoundStart();
   }
+  
+  //присваиваем текущее значение с резистора как центральное
+  if(RemoteXY.center == 1)
+  {
+    RemoteXY.resistor_center = prevCenter = _wheelHandler.SetWheelCenter();
+    RemoteXY.center = 0;
+    SoundStart();
+  }
+  
   //поправка курса в положительную сторону
   else if(RemoteXY.course_inc == 1 && _reversCoeff == 1 || RemoteXY.course_dec == 1 && _reversCoeff == -1)
   {
@@ -503,13 +506,11 @@ void AutopilotXY::ProcessUIButtons() {
   if(RemoteXY.revers_switch == 1 && _reversCoeff == 1)
   {
     _reversCoeff = -1;
-    RemoteXY.course_to_go += 180;
     SoundStart();
   }
   else if(RemoteXY.revers_switch == 0 && _reversCoeff == -1)
   {
     _reversCoeff = 1;
-    RemoteXY.course_to_go += 180;
     SoundStart();
   }
 
@@ -622,7 +623,7 @@ void AutopilotXY::ProcessUIButtons() {
 
 }
 
-void AutopilotXY::ProcessUICourseCorrection() {
+void AutopilotXY::UpdateUICourseCorrection() {
     if(_courseCorrection > 0)
     {
        strcpy(RemoteXY.sLeftCourseCorrection, "0");
@@ -640,7 +641,7 @@ void AutopilotXY::ProcessUICourseCorrection() {
     }
 }
 
-void AutopilotXY::ProcessPhysicalButtons() {
+void AutopilotXY::UpdatePhysicalButtons() {
   //переменные состояний
   static bool isCalibrationLeftDone    = false;
   static bool isCalibrationRightDone   = false;
@@ -738,15 +739,20 @@ void AutopilotXY::SetCourseFromCoorinates() {
   }
 
   float offset = String(_calculationHelper.GetRowOffset()).toFloat();
+  
   if(delta < 270 && delta > 90) {
-      rowDirection += 180;
-      offset *= -1;
-      dtostrf(offset, 7, 2, RemoteXY.sNearestPointDistance);
-    }
+    rowDirection += 180;
+    offset *= -1;
+  }
+
 
   if(RemoteXY.start_gnnss_pushSwitch == 0) {
+    dtostrf(offset, 7, 2, RemoteXY.sNearestPointDistance);
     return;
   }
+
+  offset += _courseCorrection;
+  dtostrf(offset, 7, 2, RemoteXY.sNearestPointDistance);
 
   while(rowDirection < 0)
   {
@@ -843,12 +849,10 @@ void AutopilotXY::SetWheelAngle(int diff) {
 void AutopilotXY::PositionPostprosses()
 {
   if(_needPositionPostprosses) {
-    
     _currentPosition = MapPosition(_gnssParser.GetLatitudeStr(), _gnssParser.GetLongitudeStr());
     _calculationHelper.UpdateCurrentPosition(_gnssParser.GetLatitudeStr(), _gnssParser.GetLongitudeStr());
     if(_isPointASet && _isPointBSet)
     {
-      dtostrf(_calculationHelper.GetRowOffset(), 7, 2, RemoteXY.sNearestPointDistance);
       dtostrf((int)_calculationHelper.GetRowDirection(), 3, 0, RemoteXY.sRowDirection);
       if(_calculationHelper.GetRowLength() < 1)
       {
@@ -878,7 +882,7 @@ void AutopilotXY::SoundStart()
 void AutopilotXY::SoundUpdate()
 {
   unsigned int currentTime = millis();
-  if(!_isPositionRecived && _isFirstPositionRecived)
+  if(!_isPositionRecived && RemoteXY.start_gnnss_pushSwitch == 1)
   {
     RemoteXY.buzzer = 2033;
   }

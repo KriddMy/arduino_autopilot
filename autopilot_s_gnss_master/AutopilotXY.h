@@ -43,7 +43,6 @@
 
 class AutopilotXY {
   private:
-  bool _isFirstPositionRecived   = false;
   bool _isPositionRecived        = false;
   bool _needPositionPostprosses  = false;
 
@@ -62,9 +61,9 @@ class AutopilotXY {
   GnssSerialParser  _gnssParser;
   WheelStepperMotor _wheelHandler;
 
-  void ProcessUIButtons();
-  void ProcessUICourseCorrection();
-  void ProcessPhysicalButtons();
+  void UpdateUIButtonsAndText();
+  void UpdateUICourseCorrection();
+  void UpdatePhysicalButtons();
 
   void SetCourseFromCoorinates();
   

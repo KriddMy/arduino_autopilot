@@ -2,7 +2,7 @@
 
 #define I2C_ADDRESS 23
 
-//#define WITHOUT_RESISTOR
+#define WITHOUT_RESISTOR
 
 //пины для драйвера двигателя руля
 #define PIN_DIR 12
@@ -49,7 +49,6 @@ int WheelPositionResistor = 0;
 //положение руля на резисторе переведенное в значение градусов
 int WheelPositionDegrees = 0;
 
-
 void setup() {
   Serial.begin(9600);
 
@@ -93,8 +92,12 @@ void loop() {
 void requestEvent()
 {
   byte msg[4];
-
+  
+  #ifndef WITHOUT_RESISTOR
   UpdateWheelPostionSensor(WheelCenterPosition);
+  #else
+  WheelPositionDegrees = -1;
+  #endif
   
   msg[0] = WheelPositionDegrees >> 8;
   msg[1] = WheelPositionDegrees;
@@ -110,8 +113,12 @@ void recieveEvent(int num) {
   int value;
   unsigned char rawValue[2];
 
+  #ifndef WITHOUT_RESISTOR
   UpdateWheelPostionSensor(WheelCenterPosition);
-
+  #else
+  WheelPositionDegrees = -1;
+  #endif
+  
   for(int i = 0; i < num - 2; i++)
   {
     char c = Wire.read();
@@ -144,7 +151,8 @@ void recieveEvent(int num) {
   else if(CENTER.equals(sCode)) 
   {
     if(value == -1)
-      WheelCenterPosition = analogRead(PIN_RESISTOR);
+      
+      WheelCenterPosition = WheelPositionDegrees;
     else
       WheelCenterPosition = value;
 
@@ -169,9 +177,7 @@ int CalculateAgression(int singleRevTime)
 
 bool IsCalibrated()
 {
-  //int range;
   const int range = RESISTOR_TO_PULSES_MULTIPLIER * RESISTOR_ERROR;
-  
   int low_limit = WheelPositionResistor - range;
   int high_limit = WheelPositionResistor + range;
   
@@ -180,6 +186,7 @@ bool IsCalibrated()
     return true;
   }
   return false;
+  
 }
 
 //функиця принимет значение в градусах
@@ -215,14 +222,14 @@ void RotateTo(int deg)
   {    
     WheelPostionIncrement = -1;
     digitalWrite( PIN_DIR, 0 );
-    delayMicroseconds(5); 
+    delayMicroseconds(5);
   }
   //если положительна, то поворот по часовой стрелке
   else if(pulsesTodo > 0 && WheelPostionIncrement != 1)
   {
     WheelPostionIncrement = 1;
     digitalWrite(PIN_DIR, 1 );
-    delayMicroseconds(5); 
+    delayMicroseconds(5);
   }
 
   Serial.print("Rotating to: ");

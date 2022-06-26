@@ -16,12 +16,10 @@ void WheelStepperMotor::RotateTo(int deg)
   msg[2] = 'G';
   msg[3] = deg >> 8;
   msg[4] = deg;
+  
   Wire.beginTransmission(WHEEL_ADRESS   );
   Wire.write(msg, sizeof(msg));
   Wire.endTransmission();
-
-  Serial.print("Angle: ");
-  Serial.println(deg);
 }
 
 void WheelStepperMotor::UpdateAgression(int agress)
