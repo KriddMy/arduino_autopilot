@@ -146,6 +146,10 @@ void AutopilotXY::Init() {
   pinMode( PIN_REVERS,            INPUT_PULLUP );
   pinMode( PIN_MANUAL_MODE,       INPUT_PULLUP );
 
+  _gyroscope.begin();
+  _accelerometer.begin();
+  _filter.begin();
+
   //начальное значение времени одного оборота
   RemoteXY.agress = INITIAL_TURN_SPEED_SECONDS;
   _wheelHandler.UpdateAgression(RemoteXY.agress);
@@ -168,62 +172,48 @@ void AutopilotXY::Init() {
   strcpy(RemoteXY.sGnssCourse, NA_STRING);
   strcpy(RemoteXY.sAccuracy, NA_STRING);
   strcpy(RemoteXY.sNearestPointTitle, "Ближайшая точка: ");
-
-  //String sRecived;
-  //sRecived.reserve(8);
-  //REMOTEXY_SERIAL.write("AT");
-  //delay(100);
-  //while(REMOTEXY_SERIAL.available())
-  //{
-    //sRecived += (char)REMOTEXY_SERIAL.read() && (sRecived.length() < 8);
-  //}
-  //Serial.print("Recived: ");
-  //Serial.println(sRecived);
-  //if(sRecived.equals("OK") || sRecived.equals("OK+LOST"))
-  //{
-    //Serial.println("BT device check OK.");
-  //}
-  //else
-  //{
-    //REMOTEXY_SERIAL.end();
-    //REMOTEXY_SERIAL.begin(9600);
-    //REMOTEXY_SERIAL.write("AT+BAUD1");
-    //REMOTEXY_SERIAL.end();
-    //REMOTEXY_SERIAL.begin(REMOTEXY_SERIAL_SPEED);
-    //Serial.println("setting up BT device. \n Reboot the System.");
-  //}
 }
 
 bool AutopilotXY::UpdatePosition() {
   static unsigned int prevTime = millis();
-  static bool needRMC = false;
+  static bool requreRmcFlag = false;
   bool isSucceed = true;
 
-  if(RemoteXY.connect_flag == 0)
-    return false;
+  //if(RemoteXY.connect_flag == 0)
+    //return false;
 
-  if(needRMC) {
-    if(_gnssParser.ParseGNRMC()) {
+  if(requreRmcFlag) {
+    
+    if(_gnssParser.ParseGNRMC())
+    {
       UpdateRmcInformation();
       prevTime = millis();
     }
-    else {
+    else 
+    {
       Serial.println("GNRMC reading failed...");
       isSucceed = false;
     }
-    needRMC = false;
+    requreRmcFlag = false;
+    
   }
-  else {   
-    if(_gnssParser.ParseGNGGA()) {
+  else {
+    
+    if(_gnssParser.ParseGNGGA()) 
+    {
       UpdateGgaInformation();
       prevTime = millis();
     }
-    else {
+    else 
+    {
       Serial.println("GNGGA reading failed...");
       isSucceed = false;
     }
-    needRMC = true;
+    requreRmcFlag = true;
+    
   }
+
+  UpdateIMU();
 
   if(strlen(_gnssParser.GetAccuracyStr()) == 0) {
     strcpy(RemoteXY.sAccuracy, NA_STRING);
@@ -236,7 +226,6 @@ bool AutopilotXY::UpdatePosition() {
   if(_isPositionRecived && ((currentTime - prevTime) > 3000))
   {
     Serial.println("timeot gnss");
-    _isPositionRecived = false;
     strcpy(RemoteXY.sNavigationalSolution, NA_STRING);
     strcpy(RemoteXY.sCurrentLongitude, NA_STRING);
     strcpy(RemoteXY.sCurrentLatitude, NA_STRING);
@@ -244,6 +233,8 @@ bool AutopilotXY::UpdatePosition() {
     strcpy(RemoteXY.sSpeed, NA_STRING);
     strcpy(RemoteXY.sGnssCourse, NA_STRING);
     strcpy(RemoteXY.sAccuracy, NA_STRING);
+    
+    _isPositionRecived = false;
   }
   
   return isSucceed;
@@ -873,6 +864,20 @@ void AutopilotXY::PositionPostprosses()
   }
 }
 
+void AutopilotXY::UpdateIMU()
+{
+  float gx, gy, gz, ax, ay, az;
+  
+  _accelerometer.readAccelerationGXYZ(ax, ay, az);
+  _gyroscope.readRotationRadXYZ(gx, gy, gz);
+  _filter.setFrequency(100);
+  _filter.update(gx, gy, gz, ax, ay, az);
+  
+  _yaw = filter.getYawDeg();
+  _pitch = filter.getPitchDeg();
+  _roll = filter.getRollDeg();
+}
+
 void AutopilotXY::SoundStart()
 {
   _soundStartTime = millis();
@@ -884,7 +889,7 @@ void AutopilotXY::SoundUpdate()
   unsigned int currentTime = millis();
   if(!_isPositionRecived && RemoteXY.start_gnnss_pushSwitch == 1)
   {
-    RemoteXY.buzzer = 2033;
+    RemoteXY.buzzer = ALARM_ID;
   }
   else if((currentTime - _soundStartTime) > 500)
   {

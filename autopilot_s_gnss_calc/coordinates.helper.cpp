@@ -758,7 +758,7 @@ float RowSegment::SetSegment(const MapPosition& first, const MapPosition& second
   return DirectionAB(_zeroPosition, _endPoint);
 }
 
-float RowSegment::UpdateCurrentPosition(const MapPosition& pos) {
+float RowSegment::UpdateCurrentPosition(const MapPosition& pos, float pitch) {
   if(!_isOriginSet) return 0;
 
   MapPosition temp = pos - _origin;
@@ -766,7 +766,9 @@ float RowSegment::UpdateCurrentPosition(const MapPosition& pos) {
   _currentPosition.X = temp.GetCoorinateX();
   _currentPosition.Y = temp.GetCoorinateY();
 
-  return DistanceFromPathToPoint(_zeroPosition, _endPoint, _currentPosition); 
+  float corr = cos(radians(pitch)) * ANTENNA_HIGHT;
+
+  return DistanceFromPathToPoint(_zeroPosition, _endPoint, _currentPosition) + corr; 
 }
 
 float RowSegment::UpdateOriginPosition(const MapPosition& pos, bool oppoiteDirection = false)
