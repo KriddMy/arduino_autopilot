@@ -1,12 +1,15 @@
 #ifndef _AUTOPILOT_XY_CLASS
 #define _AUTOPILOT_XY_CLASS
 
+#include <TroykaIMU.h>
+
 #include "GnssParser.h"
 #include "WheelStepperMotor.h"
 #include "CalculationHelper.h"
 
 //звук нажатия кнопок
 #define BUZZER_ID 2019
+#define ALARM_ID 2033
 
 //кнопки управления
 #define PIN_CALIBRATION_LEFT  5
@@ -43,19 +46,23 @@
 
 class AutopilotXY {
   private:
-  bool _isPositionRecived        = false;
-  bool _needPositionPostprosses  = false;
-
-  int _courseCorrection = 0; //поправка курса из интерфейса
-  int _reversCoeff      = 1; //поправка на обратный ход
-
-  unsigned int _soundStartTime = 0;
-
-  MapPosition   _currentPosition;
+  bool          _isPositionRecived        = false;
+  bool          _needPositionPostprosses  = false;
+  int           _courseCorrection         = 0;    //поправка курса из интерфейса
+  int           _reversCoeff              = 1;    //поправка на обратный ход
+  unsigned int  _soundStartTime           = 0;
+  
   bool          _isPointASet = false;
   bool          _isPointBSet = false;
+  MapPosition   _currentPosition;
   MapPosition   _pointA;
   MapPosition   _pointB;
+  
+  Madgwick      _filter;
+  Gyroscope     _gyroscope;
+  Accelerometer _accelerometer;
+
+  float _yaw, _pitch, _roll;
   
   CalcultionHelper   _calculationHelper;
   GnssSerialParser  _gnssParser;
@@ -64,14 +71,11 @@ class AutopilotXY {
   void UpdateUIButtonsAndText();
   void UpdateUICourseCorrection();
   void UpdatePhysicalButtons();
-
   void SetCourseFromCoorinates();
-  
   void SetWheelAngle(int);
-
   void UpdateRmcInformation();
   void UpdateGgaInformation();
-
+  void UpdateIMU();
   void SoundStart();
   void SoundUpdate();
 

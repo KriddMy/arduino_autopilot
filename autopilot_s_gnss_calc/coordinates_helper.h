@@ -1,5 +1,7 @@
 #include <Arduino.h>
 
+#define ANTENNA_HIGHT 2.2f
+
 struct ScenePosition {
   float X;
   float Y;
@@ -110,7 +112,7 @@ class RowSegment
   ~RowSegment();
 
   float SetSegment(const MapPosition& first, const MapPosition& second);
-  float UpdateCurrentPosition(const MapPosition& pos);
+  float UpdateCurrentPosition(const MapPosition& pos, float pitch);
   float UpdateOriginPosition(const MapPosition& pos, bool oppoiteDirection = false);
 
   float GetRowLength() { return sqrtf(_length2) / 100; }
