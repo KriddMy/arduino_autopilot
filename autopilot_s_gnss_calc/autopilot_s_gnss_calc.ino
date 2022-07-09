@@ -63,6 +63,7 @@ void recieveEvent(int num) {
   String sCode;
   String latitude;
   String longitude;
+  float pitch;
   latitude.reserve(32);
   longitude.reserve(32);
   unsigned int errorCheck = 0;
@@ -77,7 +78,7 @@ void recieveEvent(int num) {
   while(errorCheck < num)
   {
     char t = Wire.read();
-    if(t == ' ')
+    if(t == ' ' || t == '\0')
       break;
       
     latitude += t;
@@ -92,7 +93,16 @@ void recieveEvent(int num) {
       
     longitude += t;
     errorCheck++;
-  }    
+  }
+
+  for(int i = 0; errorCheck < num && i < sizeof(float); i++, errorCheck++)
+  {
+    char t = Wire.read();
+    if(t == ' ' || t == '\0')
+      break;
+      
+    ((uint8_t*)&pitch)[i] = t;
+  }
 
   char lat[latitude.length() + 1];
   char lon[longitude.length() + 1];
@@ -129,11 +139,13 @@ void recieveEvent(int num) {
   else if(NEW_FROM_PSN.equals(sCode))
   {
     MapPosition temp = MapPosition(lat, lon);
+    cPointA = temp;
     RawDirection = cRowSegment.UpdateOriginPosition(temp);
   }
   else if(NEW_FROM_PSN_OPPOSITE.equals(sCode))
   {    
     MapPosition temp = MapPosition(lat, lon);
+    cPointB = temp;
     RawDirection = cRowSegment.UpdateOriginPosition(temp, true);
   }
   else if(UNSET_A.equals(sCode))
@@ -150,7 +162,7 @@ void recieveEvent(int num) {
     {
        cCurrentPos = MapPosition(lat, lon);
       
-       Offset = cRowSegment.UpdateCurrentPosition(cCurrentPos);
+       Offset = cRowSegment.UpdateCurrentPosition(cCurrentPos, pitch);
     }
     else
     {

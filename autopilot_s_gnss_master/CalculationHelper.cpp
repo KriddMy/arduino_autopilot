@@ -838,10 +838,10 @@ void CalcultionHelper::UnsetSegmentB()
   Wire.endTransmission();
 }
 
-float CalcultionHelper::UpdateCurrentPosition(char* lat, char* lon) {
+float CalcultionHelper::UpdateCurrentPosition(char* lat, char* lon, float pitch) {
   int lengthLat = strlen(lat);
   int lengthLon = strlen(lon);
-  byte msg[lengthLat + lengthLon + 5];
+  byte msg[lengthLat + lengthLon + sizeof(float) + 6];
 
   int index = 0;
   
@@ -859,6 +859,13 @@ float CalcultionHelper::UpdateCurrentPosition(char* lat, char* lon) {
   for(int i = 0; i < lengthLon; i++)
   {
     msg[index++] = lon[i];
+  }
+  
+  msg[index++] = ' ';
+
+  for(int i = 0; i < sizeof(float); i++)
+  {
+    msg[index++] = ((uint8_t*)&Offset)[i];
   }
 
   msg[index++] = '\0';
