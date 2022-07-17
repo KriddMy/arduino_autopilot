@@ -9,9 +9,9 @@
 #define PIN_PUL 13
 #define PIN_ENA 11
 
-#define SENSOR1 1
-#define SENSOR2 2
-#define SENSOR3 3
+#define PIN_SENSOR1 1
+#define PIN_SENSOR2 2
+#define PIN_SENSOR3 3
 
 #define DESIGNED_MOTOR_STEPS 200  //фактическое количество шагов из спецификации двигателя
 #define PULSES_PER_REV 400        //берем из таблицы драйвера двигателя
@@ -81,9 +81,9 @@ void setup() {
   pinMode( PIN_ENA,       OUTPUT );
   pinMode( PIN_RESISTOR,  INPUT );
 
-  pinMode(SENSOR1,        INPUT);
-  pinMode(SENSOR2,        INPUT);
-  pinMode(SENSOR3,        INPUT);
+  pinMode(PIN_SENSOR1,        INPUT);
+  pinMode(PIN_SENSOR2,        INPUT);
+  pinMode(PIN_SENSOR3,        INPUT);
 
   CalculateAgression(5);
 }
@@ -267,9 +267,9 @@ void UpdateWheelPostionSensor(int center)
 
 void Calibrate()
 {
-  bool sensor1 = digitalRead(SENSOR1);
-  bool sensor2 = digitalRead(SENSOR2);
-  bool sensor3 = digitalRead(SENSOR3);
+  bool sensor1 = analogRead(PIN_SENSOR1) < 100 ? false : true;
+  bool sensor2 = analogRead(PIN_SENSOR2) < 100 ? false : true;
+  bool sensor3 = analogRead(PIN_SENSOR3) < 100 ? false : true;
 
   if(sensor1 == 1 && sensor2 == 0 && sensor3 == 0 ||
       sensor1 == 1 && sensor2 == 1 && sensor3 == 0 ||
