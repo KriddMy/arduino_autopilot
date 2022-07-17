@@ -9,9 +9,9 @@
 #define PIN_PUL 13
 #define PIN_ENA 11
 
-#define PIN_SENSOR1 1
-#define PIN_SENSOR2 2
-#define PIN_SENSOR3 3
+#define PIN_SENSOR1 A1
+#define PIN_SENSOR2 A2
+#define PIN_SENSOR3 A3
 
 #define DESIGNED_MOTOR_STEPS 200  //фактическое количество шагов из спецификации двигателя
 #define PULSES_PER_REV 400        //берем из таблицы драйвера двигателя
