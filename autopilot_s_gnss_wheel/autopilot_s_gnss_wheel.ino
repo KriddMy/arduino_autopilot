@@ -10,7 +10,7 @@
 #define PIN_ENA 11
 
 #define DESIGNED_MOTOR_STEPS 200  //фактическое количество шагов из спецификации двигателя
-#define PULSES_PER_REV 400        //берем из таблицы драйвера двигателя
+#define PULSES_PER_REV 10000       //берем из таблицы драйвера двигателя
 #define RESISTOR_ERROR 4          //неточность резистора положения руля в 1/1024
 
 //даитчик положения руля
@@ -80,13 +80,13 @@ void setup() {
 }
 
 void loop() {
-  if(WheelPositionCalculated != WheelPositionToGo) {
+  //if(WheelPositionCalculated != WheelPositionToGo) {
     digitalWrite( PIN_PUL, 1 );
-    delayMicroseconds(WheelAgression);
+    delay(10);
     digitalWrite( PIN_PUL, 0 );
-    delayMicroseconds(WheelAgression);
+    delay(10);
     WheelPositionCalculated += WheelPostionIncrement;
-  }
+  //}
 }
 
 void requestEvent()
@@ -163,7 +163,7 @@ void recieveEvent(int num) {
 
 int CalculateAgression(int singleRevTime)
 {
-  uint64_t temp = singleRevTime * 1000000;
+  uint64_t temp = singleRevTime * 1000;
   temp /= PULSES_PER_REV;
   WheelAgression = temp;
   WheelAgression /= 2;

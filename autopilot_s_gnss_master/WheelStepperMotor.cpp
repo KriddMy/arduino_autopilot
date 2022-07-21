@@ -50,6 +50,7 @@ int WheelStepperMotor::GetWheelPosition()
   return value;
 }
 
+
 void WheelStepperMotor::PowerSwitch(bool powerOn)
 {
   byte msg[5];

@@ -107,11 +107,11 @@ class CalcultionHelper
   float UpdateCurrentPosition(char* lat, char* lon);
   float NewRowFromPosition(char* lat, char* lon);
   float NewRowFromPositionOpposite(char* lat, char* lon);
+  void NotifySensorUpdate();
 
   float GetRowLength() { return _rowLength; }
   float GetRowDirection() { return _rowDirection; }
   float GetRowOffset() { return _currentPosOffset; }
-  
 };
 
 #endif //_CALCULATION_HELPER_CLASS

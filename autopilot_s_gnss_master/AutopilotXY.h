@@ -1,8 +1,6 @@
 #ifndef _AUTOPILOT_XY_CLASS
 #define _AUTOPILOT_XY_CLASS
 
-#include <TroykaIMU.h>
-
 #include "GnssParser.h"
 #include "WheelStepperMotor.h"
 #include "CalculationHelper.h"
@@ -58,12 +56,6 @@ class AutopilotXY {
   MapPosition   _pointA;
   MapPosition   _pointB;
   
-  Madgwick      _filter;
-  Gyroscope     _gyroscope;
-  Accelerometer _accelerometer;
-
-  float _yaw, _pitch, _roll;
-  
   CalcultionHelper   _calculationHelper;
   GnssSerialParser  _gnssParser;
   WheelStepperMotor _wheelHandler;
@@ -75,7 +67,6 @@ class AutopilotXY {
   void SetWheelAngle(int);
   void UpdateRmcInformation();
   void UpdateGgaInformation();
-  void UpdateIMU();
   void SoundStart();
   void SoundUpdate();
 

@@ -8,7 +8,6 @@ void setup() {
 
 void loop() {
   Autopilot.UpdatePosition();
-  Autopilot.UpdateUI();
   Autopilot.PositionPostprosses();
   Autopilot.UpdateUI();
 }

@@ -1,10 +1,20 @@
 #include <Wire.h>
+#include <TroykaIMU.h>
 #include "coordinates_helper.h"
 
 #define I2C_ADDRESS 47
 
+Madgwick      Filter;
+Gyroscope     Gyroscope;
+Accelerometer Accelerometer;
+
+volatile float Yaw = 0, Pitch = 0, Roll = 0;
+
+float LastYaw = 0, LastPitch = 0, LastRoll = 0;
+
 //константы сообщений по I2C шине
 const String SET_A("SEA");
+const String NOTIFY_SENSOR_UPDATE("NSA");
 const String SET_B("SEB");
 const String UNSET_A("USA");
 const String UNSET_B("USB");
@@ -31,10 +41,35 @@ void setup() {
   Wire.begin(I2C_ADDRESS);
   Wire.onReceive(recieveEvent);
   Wire.onRequest(requestEvent);
+  
+  Gyroscope.begin();
+  Accelerometer.begin();
+  Filter.begin();
 }
 
 void loop() {
+  unsigned long startMillis = millis();
+  static float updateRate = 100;
+  float gx, gy, gz, ax, ay, az;
   
+  Accelerometer.readAccelerationGXYZ(ax, ay, az);
+  Gyroscope.readRotationRadXYZ(gx, gy, gz);
+  Filter.setFrequency(updateRate);
+  Filter.update(gx, gy, gz, ax, ay, az);
+  
+  Yaw = Filter.getYawDeg();
+  Pitch = Filter.getPitchDeg();
+  Roll = Filter.getRollDeg();
+  
+  //Serial.print("Yaw: ");
+  //Serial.println(Yaw);
+  //Serial.print("Pitch: ");
+  //Serial.println(Pitch);
+  //Serial.print("Roll: ");
+  //Serial.println(Roll);
+  
+  unsigned long deltaMillis = millis() - startMillis;
+  updateRate = 1000 / deltaMillis;
 }
 
 void requestEvent()
@@ -63,7 +98,6 @@ void recieveEvent(int num) {
   String sCode;
   String latitude;
   String longitude;
-  float pitch;
   latitude.reserve(32);
   longitude.reserve(32);
   unsigned int errorCheck = 0;
@@ -93,15 +127,6 @@ void recieveEvent(int num) {
       
     longitude += t;
     errorCheck++;
-  }
-
-  for(int i = 0; errorCheck < num && i < sizeof(float); i++, errorCheck++)
-  {
-    char t = Wire.read();
-    if(t == ' ' || t == '\0')
-      break;
-      
-    ((uint8_t*)&pitch)[i] = t;
   }
 
   char lat[latitude.length() + 1];
@@ -160,9 +185,10 @@ void recieveEvent(int num) {
   {
     if(IsPointA && IsPointB)
     {
-       cCurrentPos = MapPosition(lat, lon);
-      
-       Offset = cRowSegment.UpdateCurrentPosition(cCurrentPos, pitch);
+      cCurrentPos = MapPosition(lat, lon);
+      Serial.print("Roll: ");
+      Serial.println(LastRoll);
+      Offset = cRowSegment.UpdateCurrentPosition(cCurrentPos, LastRoll);
     }
     else
     {
@@ -170,5 +196,11 @@ void recieveEvent(int num) {
       RawDirection = 0;
       RawLength = 0;
     }
+  }
+  else if(NOTIFY_SENSOR_UPDATE.equals(sCode))
+  {
+    LastYaw = Yaw;
+    LastPitch = Pitch;
+    LastRoll = Roll;
   }
 }

@@ -838,10 +838,10 @@ void CalcultionHelper::UnsetSegmentB()
   Wire.endTransmission();
 }
 
-float CalcultionHelper::UpdateCurrentPosition(char* lat, char* lon, float pitch) {
+float CalcultionHelper::UpdateCurrentPosition(char* lat, char* lon) {
   int lengthLat = strlen(lat);
   int lengthLon = strlen(lon);
-  byte msg[lengthLat + lengthLon + sizeof(float) + 6];
+  byte msg[lengthLat + lengthLon + sizeof(float) + 5];
 
   int index = 0;
   
@@ -859,13 +859,6 @@ float CalcultionHelper::UpdateCurrentPosition(char* lat, char* lon, float pitch)
   for(int i = 0; i < lengthLon; i++)
   {
     msg[index++] = lon[i];
-  }
-  
-  msg[index++] = ' ';
-
-  for(int i = 0; i < sizeof(float); i++)
-  {
-    msg[index++] = ((uint8_t*)&Offset)[i];
   }
 
   msg[index++] = '\0';
@@ -920,7 +913,7 @@ float CalcultionHelper::NewRowFromPositionOpposite(char* lat, char* lon)
   
   msg[index++] = 'N';
   msg[index++] = 'P';
-  msg[index++] = 'O';
+  msg[index++] = 'O'; 
   
   for(int i = 0; i < lengthLat; i++)
   {
@@ -975,4 +968,19 @@ float CalcultionHelper::ReciveCalculatedValues()
   _rowLength = length;
   
   return offset;
+}
+
+void CalcultionHelper::NotifySensorUpdate()
+{
+  byte msg[3];
+
+  int index = 0;
+  
+  msg[index++] = 'N';
+  msg[index++] = 'S';
+  msg[index++] = 'A';
+
+  Wire.beginTransmission(CALC_ADRESS);
+  Wire.write(msg, sizeof(msg));
+  Wire.endTransmission();
 }

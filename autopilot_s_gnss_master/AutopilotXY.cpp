@@ -146,9 +146,7 @@ void AutopilotXY::Init() {
   pinMode( PIN_REVERS,            INPUT_PULLUP );
   pinMode( PIN_MANUAL_MODE,       INPUT_PULLUP );
 
-  _gyroscope.begin();
-  _accelerometer.begin();
-  _filter.begin();
+
 
   //начальное значение времени одного оборота
   RemoteXY.agress = INITIAL_TURN_SPEED_SECONDS;
@@ -183,10 +181,10 @@ bool AutopilotXY::UpdatePosition() {
     //return false;
 
   if(requreRmcFlag) {
-    
     if(_gnssParser.ParseGNRMC())
     {
       UpdateRmcInformation();
+      _calculationHelper.NotifySensorUpdate();
       prevTime = millis();
     }
     else 
@@ -195,13 +193,12 @@ bool AutopilotXY::UpdatePosition() {
       isSucceed = false;
     }
     requreRmcFlag = false;
-    
   }
   else {
-    
     if(_gnssParser.ParseGNGGA()) 
     {
       UpdateGgaInformation();
+      _calculationHelper.NotifySensorUpdate();
       prevTime = millis();
     }
     else 
@@ -210,10 +207,7 @@ bool AutopilotXY::UpdatePosition() {
       isSucceed = false;
     }
     requreRmcFlag = true;
-    
   }
-
-  UpdateIMU();
 
   if(strlen(_gnssParser.GetAccuracyStr()) == 0) {
     strcpy(RemoteXY.sAccuracy, NA_STRING);
@@ -862,20 +856,6 @@ void AutopilotXY::PositionPostprosses()
     
     _needPositionPostprosses = false;
   }
-}
-
-void AutopilotXY::UpdateIMU()
-{
-  float gx, gy, gz, ax, ay, az;
-  
-  _accelerometer.readAccelerationGXYZ(ax, ay, az);
-  _gyroscope.readRotationRadXYZ(gx, gy, gz);
-  _filter.setFrequency(100);
-  _filter.update(gx, gy, gz, ax, ay, az);
-  
-  _yaw = filter.getYawDeg();
-  _pitch = filter.getPitchDeg();
-  _roll = filter.getRollDeg();
 }
 
 void AutopilotXY::SoundStart()
