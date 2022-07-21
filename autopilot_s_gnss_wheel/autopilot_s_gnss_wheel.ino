@@ -9,6 +9,11 @@
 #define PIN_PUL 13
 #define PIN_ENA 11
 
+//пины сенсоров
+#define PIN_SENSOR1 A1
+#define PIN_SENSOR2 A2
+#define PIN_SENSOR3 A3
+
 #define DESIGNED_MOTOR_STEPS 200  //фактическое количество шагов из спецификации двигателя
 #define PULSES_PER_REV 10000       //берем из таблицы драйвера двигателя
 #define RESISTOR_ERROR 4          //неточность резистора положения руля в 1/1024
@@ -76,17 +81,21 @@ void setup() {
   pinMode( PIN_ENA,       OUTPUT );
   pinMode( PIN_RESISTOR,  INPUT );
 
+  pinMode(PIN_SENSOR1, INPUT);
+  pinMode(PIN_SENSOR2, INPUT);
+  pinMode(PIN_SENSOR3, INPUT);
+
   CalculateAgression(5);
 }
 
 void loop() {
-  //if(WheelPositionCalculated != WheelPositionToGo) {
+  if(WheelPositionCalculated != WheelPositionToGo) {
     digitalWrite( PIN_PUL, 1 );
-    delay(10);
+    delayMicroseconds(WheelAgression);
     digitalWrite( PIN_PUL, 0 );
-    delay(10);
+    delayMicroseconds(WheelAgression);
     WheelPositionCalculated += WheelPostionIncrement;
-  //}
+  }
 }
 
 void requestEvent()
@@ -94,9 +103,12 @@ void requestEvent()
   byte msg[4];
   
   #ifndef WITHOUT_RESISTOR
-  UpdateWheelPostionSensor(WheelCenterPosition);
+    UpdateWheelPostionSensor(WheelCenterPosition);
   #else
-  WheelPositionDegrees = -1;
+    //WheelPositionDegrees = WheelPositionCalculated / PULSES_PER_REV;
+    //WheelPositionDegrees *= 360;
+
+    //WheelCenterPosition = 0;
   #endif
   
   msg[0] = WheelPositionDegrees >> 8;
@@ -150,11 +162,15 @@ void recieveEvent(int num) {
   }
   else if(CENTER.equals(sCode)) 
   {
-    if(value == -1)
-      
-      WheelCenterPosition = WheelPositionDegrees;
-    else
-      WheelCenterPosition = value;
+    #ifndef WITHOUT_RESISTOR
+      if(value == -1)
+        WheelCenterPosition = WheelPositionDegrees;
+      else
+        WheelCenterPosition = value;
+    #else
+      if(value == -1)
+        Calibrate();
+    #endif
 
     Serial.print("Center set: ");
     Serial.println(value);
@@ -163,7 +179,7 @@ void recieveEvent(int num) {
 
 int CalculateAgression(int singleRevTime)
 {
-  uint64_t temp = singleRevTime * 1000;
+  uint64_t temp = singleRevTime * 1000000;
   temp /= PULSES_PER_REV;
   WheelAgression = temp;
   WheelAgression /= 2;
@@ -250,4 +266,58 @@ void UpdateWheelPostionSensor(int center)
   WheelPositionResistor = RowResistorInput - center;
   WheelPositionDegrees = WheelPositionResistor * RESISTOR_TO_DEGREES_MULTIPLIER;
   WheelPositionResistor *= RESISTOR_TO_PULSES_MULTIPLIER;
+}
+
+void Calibrate()
+{
+  bool sensor1 = analogRead(PIN_SENSOR1) < 150 ? true : false;
+  bool sensor2 = analogRead(PIN_SENSOR2) < 150 ? true : false;
+  bool sensor3 = analogRead(PIN_SENSOR3) < 150 ? true : false;
+  
+  if(sensor1 == 1 && sensor2 == 0 && sensor3 == 0 ||
+      sensor1 == 1 && sensor2 == 1 && sensor3 == 0 ||
+      sensor1 == 1 && sensor2 == 1 && sensor3 == 1)
+  {
+    digitalWrite(PIN_DIR, 1 );
+  }
+  else if(sensor1 == 0 && sensor2 == 1 && sensor3 == 1 ||
+      sensor1 == 0 && sensor2 == 0 && sensor3 == 1 ||
+      sensor1 == 0 && sensor2 == 0 && sensor3 == 0)
+  {
+    digitalWrite(PIN_DIR, 0 );
+  }
+  else if(sensor1 == 1 && sensor2 == 0 && sensor3 == 1)
+  {
+    WheelPositionCalculated = 0;
+    return;
+  }
+  else if(sensor1 == 0 && sensor2 == 1 && sensor3 == 0)
+  {
+    for(int i = 0; i < 10; i++)
+    {
+      digitalWrite( PIN_PUL, 1 );
+      delayMicroseconds(WheelAgression);
+      digitalWrite( PIN_PUL, 0 );
+      delayMicroseconds(WheelAgression);
+    }
+  
+    Calibrate();
+  }
+  
+  while(true)
+  {
+    for(int i = 0; i < 10; i++)
+    {
+      digitalWrite( PIN_PUL, 1 );
+      delayMicroseconds(WheelAgression);
+      digitalWrite( PIN_PUL, 0 );
+      delayMicroseconds(WheelAgression);
+    }
+  
+    if(sensor1 == 1 && sensor2 == 0 && sensor3 == 1)
+    {
+      WheelPositionCalculated = 0;
+      return;
+    }
+  }
 }

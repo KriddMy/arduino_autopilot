@@ -170,6 +170,8 @@ void AutopilotXY::Init() {
   strcpy(RemoteXY.sGnssCourse, NA_STRING);
   strcpy(RemoteXY.sAccuracy, NA_STRING);
   strcpy(RemoteXY.sNearestPointTitle, "Ближайшая точка: ");
+
+  Serial.println("Finish");
 }
 
 bool AutopilotXY::UpdatePosition() {
