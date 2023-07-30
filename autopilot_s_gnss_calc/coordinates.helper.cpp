@@ -12,14 +12,14 @@ PreciseLatitude::PreciseLatitude(short degrees, short minutes, float decimals) {
   _degrees = degrees;
   _minutes = minutes;
   _decimals = decimals;
-  IsValid = true;
+  m_isValid = true;
 }
 
 PreciseLatitude::PreciseLatitude(const PreciseLatitude& copy) {
   _degrees = copy._degrees;
   _minutes = copy._minutes;
   _decimals = copy._decimals;
-  IsValid = copy.IsValid;
+  m_isValid = copy.IsValid();
 }
 
 PreciseLatitude::PreciseLatitude(char* input) {
@@ -55,12 +55,12 @@ PreciseLatitude::PreciseLatitude(char* input) {
       _decimals *= -1;
   }
   else if(input[strlen(input) - 1] != 'N') {
-    IsValid = false;
+    m_isValid = false;
     _degrees = 0;
     _minutes = 0;
     _decimals = 0;
   }
-  IsValid = true;
+  m_isValid = true;
 }
 
 PreciseLatitude PreciseLatitude::operator+(const PreciseLatitude& other) {
@@ -303,10 +303,10 @@ PreciseLatitude& PreciseLatitude::operator=(const PreciseLatitude& copy) {
   _degrees = copy._degrees;
   _minutes = copy._minutes;
   _decimals = copy._decimals;
-  IsValid = copy.IsValid;
+  m_isValid = copy.m_isValid;
 }
 
-void PreciseLatitude::print() {
+void PreciseLatitude::print()const {
   Serial.print("degrees: ");
   Serial.println(_degrees);
   Serial.print("minutes: ");
@@ -327,14 +327,14 @@ PreciseLongitude::PreciseLongitude(short degrees, short minutes, float decimals)
   _degrees = degrees;
   _minutes = minutes;
   _decimals = decimals;
-  IsValid = true;
+  m_isValid = true;
 }
 
 PreciseLongitude::PreciseLongitude(const PreciseLongitude& copy) {
   _degrees = copy._degrees;
   _minutes = copy._minutes;
   _decimals = copy._decimals;
-  IsValid = copy.IsValid;
+  m_isValid = copy.m_isValid;
 }
 
 PreciseLongitude::PreciseLongitude(char* input) {
@@ -370,12 +370,12 @@ PreciseLongitude::PreciseLongitude(char* input) {
       _decimals *= -1;
   }
   else if(input[strlen(input) - 1] != 'W') {
-    IsValid = false;
+    m_isValid = false;
     _degrees = 0;
     _minutes = 0;
     _decimals = 0;
   }
-  IsValid = true;
+  m_isValid = true;
 }
 
 PreciseLongitude PreciseLongitude::operator+(const PreciseLongitude& other) {
@@ -618,10 +618,10 @@ PreciseLongitude& PreciseLongitude::operator=(const PreciseLongitude& copy) {
   _degrees = copy._degrees;
   _minutes = copy._minutes;
   _decimals = copy._decimals;
-  IsValid = copy.IsValid;
+  m_isValid = copy.m_isValid;
 }
 
-void PreciseLongitude::print() {
+void PreciseLongitude::print()const {
   Serial.print("degrees: ");
   Serial.println(_degrees);
   Serial.print("minutes: ");
@@ -686,7 +686,7 @@ MapPosition& MapPosition::operator=(const MapPosition& copy) {
   _longitude = PreciseLongitude(copy._longitude);
 }
 
-void MapPosition::print() {
+void MapPosition::print()const {
   Serial.println("Latitude: ");
   _latitude.print();
 
@@ -695,7 +695,7 @@ void MapPosition::print() {
   Serial.println();
 }
 
-float MapPosition::DistanceInMeters(MapPosition& pos) {
+float MapPosition::DistanceInMeters(MapPosition& pos)const {
   float result;
   const double lonCoeff = cos(radians(_latitude.Degrees() + _latitude.Minutes() / 60));
 
@@ -713,14 +713,14 @@ float MapPosition::DistanceInMeters(MapPosition& pos) {
   return result;
 }
 
-float MapPosition::GetCoorinateX() {
+float MapPosition::GetCoorinateX()const {
   float dLat = this->_latitude.Degrees() * 60 + this->_latitude.Minutes() + this->_latitude.Decimals();
   dLat *= _fromMilesToCantimeters;
 
   return dLat;
 }
 
-float MapPosition::GetCoorinateY() {
+float MapPosition::GetCoorinateY()const {
   const double coeff = cos(radians(_latitude.Degrees() + _longitude.Minutes() / 60));
   
   float dLon = this->_longitude.Degrees() * 60 + this->_longitude.Minutes() + this->_longitude.Decimals();
@@ -746,7 +746,6 @@ RowSegment::~RowSegment() {
 
 float RowSegment::SetSegment(const MapPosition& first, const MapPosition& second) {
   _origin = MapPosition(first);
-  _isOriginSet = true;
 
   MapPosition temp = second - first;
   
@@ -759,7 +758,7 @@ float RowSegment::SetSegment(const MapPosition& first, const MapPosition& second
 }
 
 float RowSegment::UpdateCurrentPosition(const MapPosition& pos, float pitch) {
-  if(!_isOriginSet) return 0;
+  if(!_origin.IsValid()) return 0;
 
   MapPosition temp = pos - _origin;
 
@@ -773,7 +772,7 @@ float RowSegment::UpdateCurrentPosition(const MapPosition& pos, float pitch) {
 
 float RowSegment::UpdateOriginPosition(const MapPosition& pos, bool oppoiteDirection = false)
 {
-  if(!_isOriginSet) return 0;
+  if(!_origin.IsValid()) return 0;
   _origin = MapPosition(pos);
 
   if(oppoiteDirection)
@@ -806,15 +805,10 @@ float RowSegment::DistanceFromPathToPoint(const ScenePosition A, const ScenePosi
   float dot2 = DotProductBA_BC(B, A, pos);
   
   if (dot1 < 0)
-  {
       result = SquaredDistance(B, pos);
-  }
   else if (dot2 < 0)
-  {
       result = SquaredDistance(A, pos);
-  }
-  else
-  {
+  else {
       float segmentVec2d[2];
 
       float t;
@@ -836,9 +830,8 @@ float RowSegment::DistanceFromPathToPoint(const ScenePosition A, const ScenePosi
   }
   result = sqrtf(result);
 
-  if(CrossProduct(A, B, pos) > 0) {
+  if(CrossProduct(A, B, pos) > 0)
     result *= -1;
-  }
   
   return result / 100;
 }

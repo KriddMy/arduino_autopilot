@@ -2,21 +2,23 @@
 
 #define I2C_ADDRESS 23
 
-#define WITHOUT_RESISTOR
+#define WITHOUT_RESISTOR //старый варианет считывания положения руля был по регулируемому резистору (не удобно и не точно)
+//#define SERIAL_SHOW_SENSORS_VALUES
 
-//пины для драйвера двигателя руля
+//пины для драйвера двигателя
 #define PIN_DIR 12
 #define PIN_PUL 13
 #define PIN_ENA 11
 
-#define PIN_SENSOR1 A1
-#define PIN_SENSOR2 A2
+//пины индукционных сенсоров положения руля
+#define PIN_SENSOR1 A2
+#define PIN_SENSOR2 A1
 #define PIN_SENSOR3 A3
 
-#define DESIGNED_MOTOR_STEPS 200  //фактическое количество шагов из спецификации двигателя
-#define PULSES_PER_REV 400        //берем из таблицы драйвера двигателя
-#define RESISTOR_ERROR 4
-#define MOTOR_TO_WHEEL_RATIO 30/3
+#define DESIGNED_MOTOR_STEPS 400    //фактическое количество шагов из спецификации двигателя
+#define PULSES_PER_REV 800          //берем из таблицы драйвера двигателя
+#define RESISTOR_ERROR 4            //ожидаемая ошибка резистора руля в градусах
+#define MOTOR_TO_WHEEL_RATIO 30/3   //передаточное число между шестеренкой руля и шестеренкой шагового двигателя
 
 //даитчик положения руля
 #define PIN_RESISTOR A0
@@ -27,12 +29,17 @@ const String AGRESSION("AGR");
 const String POWER("PWR");
 const String CENTER("CTR");
 
+void RotateLoop(int);
+void CalibrateLoop(int);
+typedef void (*LoopFunction) (int = 0);
+LoopFunction loopFunc = RotateLoop;
+
 //Скорость поворота двигателя. Определяет задержку
 //между импульсами в микросекундах. Всегда больше 2 и
 //рассичтывается из заданного времени полного оборота
 int WheelAgression = 16383;
 
-//Данные с датчика при центральной позиции руля
+//Данные с резитсора при центральной позиции руля(если используется)
 int WheelCenterPosition = 290;
 
 //программный счетчик шагов руля
@@ -41,13 +48,18 @@ int WheelPositionCalculated = 0;
 
 //связь между потоками
 int WheelPositionToGo = 0;      //текушяя позиция куда стремится повернуть руль в шагах двигателя
-int WheelPostionIncrement = 0;  //коефициент для программного счетчика шагов. Если положительный - руль проворачивается по часовой.
+int WheelPostionIncrement = 0;  //коэффициент для программного счетчика шагов. Если положительный - руль проворачивается по часовой.
 
-//поправка для перевода значений резистора
-//в удобные для чтения
-float RESISTOR_TO_PULSES_MULTIPLIER;
-float RESISTOR_TO_DEGREES_MULTIPLIER;
-int   PULSES_PER_STEP;
+//поправка для перевода значений резистора в удобные для чтения
+
+//расчитываем коэффициент перевода из сырого значения, считанного с резистора, в эквивалент шагов
+constexpr float RESISTOR_TO_PULSES_MULTIPLIER = PULSES_PER_REV / 98;
+//расчитываем коэффициент перевода из сырого значения, считанного с резистора, в эквивалент градусов
+constexpr float RESISTOR_TO_DEGREES_MULTIPLIER = 360 / 98;
+
+//количество импцульсов, которые необходимо подать на драйвер двигателя,
+//чтобы пройти один шаг
+constexpr int   PULSES_PER_STEP = PULSES_PER_REV / DESIGNED_MOTOR_STEPS;
 
 //положение руля на резисторе переведенное в значение шагов
 int WheelPositionResistor = 0;
@@ -61,25 +73,16 @@ void setup() {
   Wire.onReceive(recieveEvent);
   Wire.onRequest(requestEvent);
   
-  //расчитываем коэфицент перевода из начального значения на резисторе в эквивалент градусов
-  RESISTOR_TO_DEGREES_MULTIPLIER = 1 / 1;
-  RESISTOR_TO_DEGREES_MULTIPLIER *=  360;
-  RESISTOR_TO_DEGREES_MULTIPLIER /= 98;
-
-  //расчитываем коэфицент перевода из начального значения на резисторе в эквивалент шагов
-  RESISTOR_TO_PULSES_MULTIPLIER = 1 / 1;
-  RESISTOR_TO_PULSES_MULTIPLIER *= PULSES_PER_REV;
-  RESISTOR_TO_PULSES_MULTIPLIER /= 98;
-
-  PULSES_PER_STEP = PULSES_PER_REV / DESIGNED_MOTOR_STEPS;
-  
-  Serial.print("Wheel Coeff: ");
-  Serial.println(RESISTOR_TO_PULSES_MULTIPLIER);
+  //Serial.print("Wheel Coeff: ");
+  //Serial.println(RESISTOR_TO_PULSES_MULTIPLIER);
   
   pinMode( PIN_DIR,       OUTPUT );
   pinMode( PIN_PUL,       OUTPUT );
   pinMode( PIN_ENA,       OUTPUT );
+
+  #ifndef WITHOUT_RESISTOR
   pinMode( PIN_RESISTOR,  INPUT );
+  #endif
 
   pinMode(PIN_SENSOR1,        INPUT);
   pinMode(PIN_SENSOR2,        INPUT);
@@ -89,13 +92,22 @@ void setup() {
 }
 
 void loop() {
-  if(WheelPositionCalculated != WheelPositionToGo) {
-    digitalWrite( PIN_PUL, 1 );
+  #ifdef SERIAL_SHOW_SENSORS_VALUES
+  Serial.print(analogRead(PIN_SENSOR1));
+  Serial.print(" ");
+  Serial.print(analogRead(PIN_SENSOR2));
+  Serial.print(" ");
+  Serial.println(analogRead(PIN_SENSOR3));
+  #endif
+  digitalWrite(PIN_ENA, false);
+  digitalWrite( PIN_PUL, 1 );
     delayMicroseconds(WheelAgression);
     digitalWrite( PIN_PUL, 0 );
     delayMicroseconds(WheelAgression);
-    WheelPositionCalculated += WheelPostionIncrement;
-  }
+
+  //функция калибровки либо поворота на заданный угол
+  //выставляется ниже
+  //loopFunc(0);
 }
 
 void requestEvent()
@@ -142,20 +154,20 @@ void recieveEvent(int num) {
   if(ANGLE.equals(sCode))
   {
     RotateTo(value);
-    Serial.print("Angle: ");
-    Serial.println(value);
+    //Serial.print("Angle: ");
+    //Serial.println(value);
   }
   else if(AGRESSION.equals(sCode)) 
   {
     CalculateAgression(value);
-    Serial.print("Agression: ");
-    Serial.println(value);
+    //Serial.print("Agression: ");
+    //Serial.println(value);
   }
   else if(POWER.equals(sCode)) 
   {
     digitalWrite(PIN_ENA, (bool)value);
-    Serial.print("ENA: ");
-    Serial.println((bool)value);
+    //Serial.print("ENA: ");
+    //Serial.println((bool)value);
   }
   else if(CENTER.equals(sCode)) 
   {
@@ -169,7 +181,7 @@ void recieveEvent(int num) {
     Serial.print("Center set: ");
     Serial.println(value);
     #else
-    Calibrate();
+    loopFunc = CalibrateLoop;
     #endif
   }
 }
@@ -188,6 +200,7 @@ int CalculateAgression(int singleRevTime)
   return WheelAgression;
 }
 
+//свиряет значение положения руля на резисторе с внутренним вычислением с учетом погрешности датчика
 bool IsCalibrated()
 {
   const int range = RESISTOR_TO_PULSES_MULTIPLIER * RESISTOR_ERROR;
@@ -213,7 +226,7 @@ void RotateTo(int deg)
   if(!IsCalibrated())
   {
     WheelPositionCalculated = WheelPositionResistor;
-    Serial.println("Calibartion OK");
+    //Serial.println("Calibartion OK");
   }
   #endif
   
@@ -245,10 +258,10 @@ void RotateTo(int deg)
     delayMicroseconds(5);
   }
 
-  Serial.print("Rotating to: ");
-  Serial.println(deg);
-  Serial.print("Pulses: ");
-  Serial.println(pulsesTodo);
+  //Serial.print("Rotating to: ");
+  //Serial.println(deg);
+  //Serial.print("Pulses: ");
+  //Serial.println(pulsesTodo);
 
   //устанавливае значения, к которому поворачивает руль
   WheelPositionToGo = (int)pulses;
@@ -257,20 +270,62 @@ void RotateTo(int deg)
 void UpdateWheelPostionSensor(int center)
 {
   int RowResistorInput = analogRead(PIN_RESISTOR);
-  Serial.print("Resistor input: ");
-  Serial.println(RowResistorInput);
+  //Serial.print("Resistor input: ");
+  //Serial.println(RowResistorInput);
   
   WheelPositionResistor = RowResistorInput - center;
   WheelPositionDegrees = WheelPositionResistor * RESISTOR_TO_DEGREES_MULTIPLIER;
   WheelPositionResistor *= RESISTOR_TO_PULSES_MULTIPLIER;
 }
 
-void Calibrate()
+void RotateLoop(int unused = 0)
 {
-  bool sensor1 = analogRead(PIN_SENSOR1) < 100 ? false : true;
-  bool sensor2 = analogRead(PIN_SENSOR2) < 100 ? false : true;
-  bool sensor3 = analogRead(PIN_SENSOR3) < 100 ? false : true;
+  if(WheelPositionCalculated != WheelPositionToGo) {
+    digitalWrite( PIN_PUL, 1 );
+    delayMicroseconds(WheelAgression);
+    digitalWrite( PIN_PUL, 0 );
+    delayMicroseconds(WheelAgression);
+    WheelPositionCalculated += WheelPostionIncrement;
+  }
+}
 
+void CalibrateLoop(int nStackCount = 0)
+{
+  loopFunc = RotateLoop;
+
+  bool sensor1 = analogRead(PIN_SENSOR1) > 512 ? false : true;
+  bool sensor2 = analogRead(PIN_SENSOR2) > 512 ? false : true;
+  bool sensor3 = analogRead(PIN_SENSOR3) > 512 ? false : true;
+
+  //руль - центр
+  if(sensor1 == 1 && sensor2 == 0 && sensor3 == 1)
+  {
+    WheelPositionCalculated = 0;
+    return;
+  }
+  //руль в положении лиюо 45 градусов либо справа, либо слева. Неопределенное положение
+  //сдвинем положение руля пока не выйдем из неопределенной зоны
+  else if(sensor1 == 0 && sensor2 == 1 && sensor3 == 0)
+  {
+    //проверка на StackOverflow еслм датчики по какой то причине не работают
+    if(nStackCount > 10)
+      return;
+
+    //поворот на градус
+    for(int i = 0; i < PULSES_PER_REV / 360; i++)
+    {
+      digitalWrite( PIN_PUL, 1 );
+      delayMicroseconds(WheelAgression);
+      digitalWrite( PIN_PUL, 0 );
+      delayMicroseconds(WheelAgression);
+    }
+
+    return CalibrateLoop(++nStackCount);
+  }
+
+  //////////////////////////////////////////////////////////////
+  ////////////////////руль - в центр////////////////////////////
+  //////////////////////////////////////////////////////////////
   if(sensor1 == 1 && sensor2 == 0 && sensor3 == 0 ||
       sensor1 == 1 && sensor2 == 1 && sensor3 == 0 ||
       sensor1 == 1 && sensor2 == 1 && sensor3 == 1)
@@ -283,38 +338,22 @@ void Calibrate()
   {
     digitalWrite(PIN_DIR, 0 );
   }
-  else if(sensor1 == 1 && sensor2 == 0 && sensor3 == 1)
-  {
-    WheelPositionCalculated = 0;
-    return;
-  }
-  else if(sensor1 == 0 && sensor2 == 1 && sensor3 == 0)
-  {
-    for(int i = 0; i < 10; i++)
-    {
-      digitalWrite( PIN_PUL, 1 );
-      delayMicroseconds(WheelAgression);
-      digitalWrite( PIN_PUL, 0 );
-      delayMicroseconds(WheelAgression);
-    }
-
-    Calibrate();
-  }
 
   while(true)
   {
+    // ОК - руль в центре
+     if(sensor1 == 1 && sensor2 == 0 && sensor3 == 1)
+    {
+      WheelPositionCalculated = 0;
+      return;
+    }
+     
     for(int i = 0; i < 10; i++)
     {
       digitalWrite( PIN_PUL, 1 );
       delayMicroseconds(WheelAgression);
       digitalWrite( PIN_PUL, 0 );
       delayMicroseconds(WheelAgression);
-    }
-
-    if(sensor1 == 1 && sensor2 == 0 && sensor3 == 1)
-    {
-      WheelPositionCalculated = 0;
-      return;
     }
   }
 }

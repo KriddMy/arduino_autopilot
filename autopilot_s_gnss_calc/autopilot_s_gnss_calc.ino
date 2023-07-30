@@ -17,17 +17,17 @@ RowSegment cRowSegment;
 bool IsPointA = false;
 bool IsPointB = false;
 
-MapPosition cPointA;
-MapPosition cPointB;
+MapPosition posPointA;
+MapPosition posPointB;
 MapPosition cCurrentPos;
 
-float Offset = 0;
-float RawDirection = 0;
-float RawLength = 0;
+float fOffset = 0;
+float fRawDirection = 0;
+float fRawLength = 0;
 
 void setup() {
-  Serial.begin(9600);
-  Serial.println("Serial speed 9600");
+  //Serial.begin(9600);
+  //Serial.println("Serial speed 9600");
   Wire.begin(I2C_ADDRESS);
   Wire.onReceive(recieveEvent);
   Wire.onRequest(requestEvent);
@@ -41,20 +41,20 @@ void requestEvent()
 {
   byte msg[12];
   
-  msg[0] = ((uint8_t*)&Offset)[0];
-  msg[1] = ((uint8_t*)&Offset)[1];
-  msg[2] = ((uint8_t*)&Offset)[2];
-  msg[3] = ((uint8_t*)&Offset)[3];
+  msg[0] = ((uint8_t*)&fOffset)[0];
+  msg[1] = ((uint8_t*)&fOffset)[1];
+  msg[2] = ((uint8_t*)&fOffset)[2];
+  msg[3] = ((uint8_t*)&fOffset)[3];
 
-  msg[4] = ((uint8_t*)&RawDirection)[0];
-  msg[5] = ((uint8_t*)&RawDirection)[1];  
-  msg[6] = ((uint8_t*)&RawDirection)[2];
-  msg[7] = ((uint8_t*)&RawDirection)[3];
+  msg[4] = ((uint8_t*)&fRawDirection)[0];
+  msg[5] = ((uint8_t*)&fRawDirection)[1];  
+  msg[6] = ((uint8_t*)&fRawDirection)[2];
+  msg[7] = ((uint8_t*)&fRawDirection)[3];
 
-  msg[8] = ((uint8_t*)&RawLength)[0];
-  msg[9] = ((uint8_t*)&RawLength)[1];  
-  msg[10] = ((uint8_t*)&RawLength)[2];
-  msg[11] = ((uint8_t*)&RawLength)[3];
+  msg[8] = ((uint8_t*)&fRawLength)[0];
+  msg[9] = ((uint8_t*)&fRawLength)[1];  
+  msg[10] = ((uint8_t*)&fRawLength)[2];
+  msg[11] = ((uint8_t*)&fRawLength)[3];
 
   Wire.write(msg, 12);
 }
@@ -110,43 +110,43 @@ void recieveEvent(int num) {
   latitude.toCharArray(lat, latitude.length() + 1);
   longitude.toCharArray(lon, longitude.length() + 1);
 
-  Serial.print(sCode);
+  /*Serial.print(sCode);
   Serial.print(" ");
   Serial.print(latitude);
   Serial.print(" ");
-  Serial.println(longitude);
+  Serial.println(longitude);*/
 
   if(SET_A.equals(sCode))
   {
-    cPointA = MapPosition(lat, lon);
+    posPointA = MapPosition(lat, lon);
     IsPointA = true;
     if(IsPointB)
     {
-      RawDirection = cRowSegment.SetSegment(cPointA, cPointB);
-      RawLength = cRowSegment.GetRowLength();
+      fRawDirection = cRowSegment.SetSegment(posPointA, posPointB);
+      fRawLength = cRowSegment.GetRowLength();
     }
   }
   else if(SET_B.equals(sCode))
   {     
-    cPointB = MapPosition(lat, lon);
+    posPointB = MapPosition(lat, lon);
     IsPointB = true;
     if(IsPointA)
     {
-      RawDirection = cRowSegment.SetSegment(cPointA, cPointB);
-      RawLength = cRowSegment.GetRowLength();
+      fRawDirection = cRowSegment.SetSegment(posPointA, posPointB);
+      fRawLength = cRowSegment.GetRowLength();
     }
   }
   else if(NEW_FROM_PSN.equals(sCode))
   {
     MapPosition temp = MapPosition(lat, lon);
-    cPointA = temp;
-    RawDirection = cRowSegment.UpdateOriginPosition(temp);
+    posPointA = temp;
+    fRawDirection = cRowSegment.UpdateOriginPosition(temp);
   }
   else if(NEW_FROM_PSN_OPPOSITE.equals(sCode))
   {    
     MapPosition temp = MapPosition(lat, lon);
-    cPointB = temp;
-    RawDirection = cRowSegment.UpdateOriginPosition(temp, true);
+    posPointB = temp;
+    fRawDirection = cRowSegment.UpdateOriginPosition(temp, true);
   }
   else if(UNSET_A.equals(sCode))
   {
@@ -162,13 +162,13 @@ void recieveEvent(int num) {
     {
        cCurrentPos = MapPosition(lat, lon);
       
-       Offset = cRowSegment.UpdateCurrentPosition(cCurrentPos, pitch);
+       fOffset = cRowSegment.UpdateCurrentPosition(cCurrentPos, pitch);
     }
     else
     {
-      Offset = 0;
-      RawDirection = 0;
-      RawLength = 0;
+      fOffset = 0;
+      fRawDirection = 0;
+      fRawLength = 0;
     }
   }
 }

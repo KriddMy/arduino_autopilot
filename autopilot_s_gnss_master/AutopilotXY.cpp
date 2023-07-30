@@ -172,10 +172,11 @@ void AutopilotXY::Init() {
   strcpy(RemoteXY.sGnssCourse, NA_STRING);
   strcpy(RemoteXY.sAccuracy, NA_STRING);
   strcpy(RemoteXY.sNearestPointTitle, "Ближайшая точка: ");
+  Serial.print("inti comlete");
 }
 
 bool AutopilotXY::UpdatePosition() {
-  static unsigned int prevTime = millis();
+  static unsigned long prevTime = millis();
   static bool requreRmcFlag = false;
   bool isSucceed = true;
 
@@ -841,7 +842,7 @@ void AutopilotXY::PositionPostprosses()
 {
   if(_needPositionPostprosses) {
     _currentPosition = MapPosition(_gnssParser.GetLatitudeStr(), _gnssParser.GetLongitudeStr());
-    _calculationHelper.UpdateCurrentPosition(_gnssParser.GetLatitudeStr(), _gnssParser.GetLongitudeStr());
+    _calculationHelper.UpdateCurrentPosition(_gnssParser.GetLatitudeStr(), _gnssParser.GetLongitudeStr(), _pitch);
     if(_isPointASet && _isPointBSet)
     {
       dtostrf((int)_calculationHelper.GetRowDirection(), 3, 0, RemoteXY.sRowDirection);
@@ -873,9 +874,9 @@ void AutopilotXY::UpdateIMU()
   _filter.setFrequency(100);
   _filter.update(gx, gy, gz, ax, ay, az);
   
-  _yaw = filter.getYawDeg();
-  _pitch = filter.getPitchDeg();
-  _roll = filter.getRollDeg();
+  _yaw = _filter.getYawDeg();
+  _pitch = _filter.getPitchDeg();
+  _roll = _filter.getRollDeg();
 }
 
 void AutopilotXY::SoundStart()

@@ -7,18 +7,28 @@ struct ScenePosition {
   float Y;
 };
 
-class PreciseLatitude {
-  private:
+class PreciseCoordinateBase
+{
+  protected:
+  bool  m_isValid = false;
+
   short _degrees = 0;
   short _minutes = 0;
   float _decimals = 0;
-  
+
   public:
-  bool  IsValid = false;
-  
-  short Degrees()   { return _degrees; }
-  short Minutes()   { return _minutes; }
-  float Decimals()  { return _decimals; }
+  const bool IsValid() const { return m_isValid; }
+
+  const short Degrees() const { return _degrees; }
+  const short Minutes() const { return _minutes; }
+  const float Decimals() const { return _decimals; }
+
+  void print()const {};
+};
+
+class PreciseLatitude : public PreciseCoordinateBase 
+{
+  public:
 
   PreciseLatitude();
   PreciseLatitude(short degrees, short minutes, float decimals);
@@ -31,22 +41,12 @@ class PreciseLatitude {
   PreciseLatitude& operator-=(const PreciseLatitude& rhs);
   PreciseLatitude& operator= (const PreciseLatitude& copy);
 
-  void print();
+ void print()const;
 };
 
-class PreciseLongitude {
-  private:
-  short _degrees = 0;
-  short _minutes = 0;
-  float _decimals = 0;
-  
+class PreciseLongitude : public PreciseCoordinateBase 
+{
   public:
-  bool  IsValid = false;
-  
-  short Degrees()   { return _degrees; }
-  short Minutes()   { return _minutes; }
-  float Decimals()  { return _decimals; }
-
   PreciseLongitude();
   PreciseLongitude(short degrees, short minutes, float decimals);
   PreciseLongitude(const PreciseLongitude& copy); 
@@ -58,11 +58,12 @@ class PreciseLongitude {
   PreciseLongitude& operator-=(const PreciseLongitude& rhs);
   PreciseLongitude& operator= (const PreciseLongitude& copy);
 
-  void print();
+  void print()const;
   
 };
 
-class MapPosition {
+class MapPosition 
+{
   private:
   PreciseLatitude _latitude;
   PreciseLongitude _longitude;
@@ -77,22 +78,23 @@ class MapPosition {
   MapPosition(char* lat, char* lon);
   ~MapPosition();
 
+  const bool IsValid() const { return _latitude.IsValid() && _longitude.IsValid(); }
+
   MapPosition  operator+ (const MapPosition& other); 
   MapPosition  operator- (const MapPosition& other);
   MapPosition& operator+=(const MapPosition& rhs);
   MapPosition& operator-=(const MapPosition& rhs);
   MapPosition& operator= (const MapPosition& copy);
 
-  void  print();
-  float DistanceInMeters(MapPosition& pos);
-  float GetCoorinateX();
-  float GetCoorinateY();
+  void print()const;
+  float DistanceInMeters(MapPosition& pos)const;
+  float GetCoorinateX()const;
+  float GetCoorinateY()const;
 };
 
 class RowSegment
 {
   private:
-  bool        _isOriginSet = false;
   MapPosition _origin;
 
   const ScenePosition _zeroPosition = { 0, 0 };
