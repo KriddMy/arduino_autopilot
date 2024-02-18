@@ -1,6 +1,8 @@
   #include "AutopilotXY.h"
+  #include "ErrorHandler.h"
 
 AutopilotXY Autopilot = AutopilotXY();
+ErrorHandler ErrHandler = ErrorHandler();
 
 void setup() { 
   Autopilot.Init();

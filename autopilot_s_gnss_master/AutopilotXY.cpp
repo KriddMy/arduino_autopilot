@@ -1,10 +1,13 @@
 #include "AutopilotXY.h"
+#include "ErrorHandler.h"
 
 //////////////////////////////////////////////
 //        RemoteXY include library          //
 //////////////////////////////////////////////
 
 #include <RemoteXY.h>
+
+extern ErrorHandler ErrHandler;
 
 // конфигурация интерфейса  
 #pragma pack(push, 1)
@@ -176,10 +179,9 @@ void AutopilotXY::Init() {
 }
 
 bool AutopilotXY::UpdatePosition() {
-  static unsigned long prevTime = millis();
   static bool requreRmcFlag = false;
   bool isSucceed = true;
-
+  static unsigned long prevTime = millis();
   //if(RemoteXY.connect_flag == 0)
     //return false;
 
@@ -189,9 +191,11 @@ bool AutopilotXY::UpdatePosition() {
     {
       UpdateRmcInformation();
       prevTime = millis();
+      ErrHandler.UnsetError(ERR_NOGNGGA_FLAG);
     }
     else 
     {
+      ErrHandler.SetError(ERR_NOGNGGA_FLAG);
       Serial.println("GNRMC reading failed...");
       isSucceed = false;
     }
@@ -204,9 +208,11 @@ bool AutopilotXY::UpdatePosition() {
     {
       UpdateGgaInformation();
       prevTime = millis();
+      ErrHandler.UnsetError(ERR_NOGNRMC_FLAG);
     }
     else 
     {
+      ErrHandler.SetError(ERR_NOGNRMC_FLAG);
       Serial.println("GNGGA reading failed...");
       isSucceed = false;
     }
@@ -223,7 +229,7 @@ bool AutopilotXY::UpdatePosition() {
     strcpy(RemoteXY.sAccuracy, _gnssParser.GetAccuracyStr());
   }
 
-  unsigned int currentTime = millis();
+  unsigned long currentTime = millis();
   if(_isPositionRecived && ((currentTime - prevTime) > 3000))
   {
     Serial.println("timeot gnss");
@@ -323,7 +329,9 @@ void AutopilotXY::UpdateUI() {
 
   //звук нажатия кнопки выкл
   SoundUpdate();
-  
+  //обработчик ошибок
+  ErrHandler.SetErrorString(RemoteXY.sNavigationalSolution, 16);
+
   RemoteXY_Handler ();
   
   //если смартфон потерял соединение или верхиний переключатель выключен - дальше вычисления не выполняем

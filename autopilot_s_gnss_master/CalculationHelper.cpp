@@ -1,5 +1,7 @@
 #include "CalculationHelper.h"
+#include "ErrorHandler.h"
 
+extern ErrorHandler ErrHandler;
 
 ////////////////////////////////////////////////////////////////////////
 ///////////////////////PreciseLatitude/////////////////////////////////
@@ -888,7 +890,10 @@ float CalcultionHelper::SetSegmentA(char* lat, char* lon) {
   
   Wire.beginTransmission(CALC_ADRESS);
   Wire.write(msg, sizeof(msg));
-  Wire.endTransmission();
+  if(Wire.endTransmission() == 0)
+    ErrHandler.UnsetError(ERR_NOCALC_CONNECTION);
+  else
+    ErrHandler.SetError(ERR_NOCALC_CONNECTION);
 }
 
 float CalcultionHelper::SetSegmentB(char* lat, char* lon) {
@@ -920,7 +925,10 @@ float CalcultionHelper::SetSegmentB(char* lat, char* lon) {
   
   Wire.beginTransmission(CALC_ADRESS);
   Wire.write(msg, sizeof(msg));
-  Wire.endTransmission();
+  if(Wire.endTransmission() == 0)
+    ErrHandler.UnsetError(ERR_NOCALC_CONNECTION);
+  else
+    ErrHandler.SetError(ERR_NOCALC_CONNECTION);
 }
 
 void CalcultionHelper::UnsetSegmentA()
@@ -937,7 +945,10 @@ void CalcultionHelper::UnsetSegmentA()
 
   Wire.beginTransmission(CALC_ADRESS);
   Wire.write(msg, sizeof(msg));
-  Wire.endTransmission();
+  if(Wire.endTransmission() == 0)
+    ErrHandler.UnsetError(ERR_NOCALC_CONNECTION);
+  else
+    ErrHandler.SetError(ERR_NOCALC_CONNECTION);
 }
 
 void CalcultionHelper::UnsetSegmentB()
@@ -954,7 +965,10 @@ void CalcultionHelper::UnsetSegmentB()
 
   Wire.beginTransmission(CALC_ADRESS);
   Wire.write(msg, sizeof(msg));
-  Wire.endTransmission();
+  if(Wire.endTransmission() == 0)
+    ErrHandler.UnsetError(ERR_NOCALC_CONNECTION);
+  else
+    ErrHandler.SetError(ERR_NOCALC_CONNECTION);
 }
 
 float CalcultionHelper::UpdateCurrentPosition(char* lat, char* lon, float pitch) {
@@ -991,7 +1005,10 @@ float CalcultionHelper::UpdateCurrentPosition(char* lat, char* lon, float pitch)
   
   Wire.beginTransmission(CALC_ADRESS);
   Wire.write(msg, sizeof(msg));
-  Wire.endTransmission();
+  if(Wire.endTransmission() == 0)
+    ErrHandler.UnsetError(ERR_NOCALC_CONNECTION);
+  else
+    ErrHandler.SetError(ERR_NOCALC_CONNECTION);
 
   return ReciveCalculatedValues();
 }
@@ -1024,7 +1041,10 @@ float CalcultionHelper::NewRowFromPosition(char* lat, char* lon)
   
   Wire.beginTransmission(CALC_ADRESS);
   Wire.write(msg, sizeof(msg));
-  Wire.endTransmission();
+  if(Wire.endTransmission() == 0)
+    ErrHandler.UnsetError(ERR_NOCALC_CONNECTION);
+  else
+    ErrHandler.SetError(ERR_NOCALC_CONNECTION);
 
   return ReciveCalculatedValues();
 }
@@ -1057,7 +1077,10 @@ float CalcultionHelper::NewRowFromPositionOpposite(char* lat, char* lon)
   
   Wire.beginTransmission(CALC_ADRESS);
   Wire.write(msg, sizeof(msg));
-  Wire.endTransmission();
+  if(Wire.endTransmission() == 0)
+    ErrHandler.UnsetError(ERR_NOCALC_CONNECTION);
+  else
+    ErrHandler.SetError(ERR_NOCALC_CONNECTION);
 
   return ReciveCalculatedValues();
 }

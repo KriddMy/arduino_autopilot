@@ -24,10 +24,10 @@
 #define PIN_RESISTOR A0
 
 //константы сообщений по I2C шине
-const String ANGLE("ANG");
-const String AGRESSION("AGR");
-const String POWER("PWR");
-const String CENTER("CTR");
+const String ANGLE("ANG");          //задание угла поворота
+const String AGRESSION("AGR");      //задание скорости поворота руля (агрессии)
+const String POWER("PWR");          //питание  on/off
+const String CENTER("CTR");         //калибровка
 
 void RotateLoop(int);
 void CalibrateLoop(int);
@@ -80,9 +80,9 @@ void setup() {
   pinMode( PIN_PUL,       OUTPUT );
   pinMode( PIN_ENA,       OUTPUT );
 
-  #ifndef WITHOUT_RESISTOR
+#ifndef WITHOUT_RESISTOR
   pinMode( PIN_RESISTOR,  INPUT );
-  #endif
+#endif
 
   pinMode(PIN_SENSOR1,        INPUT);
   pinMode(PIN_SENSOR2,        INPUT);
@@ -92,33 +92,28 @@ void setup() {
 }
 
 void loop() {
-  #ifdef SERIAL_SHOW_SENSORS_VALUES
+#ifdef SERIAL_SHOW_SENSORS_VALUES
   Serial.print(analogRead(PIN_SENSOR1));
   Serial.print(" ");
   Serial.print(analogRead(PIN_SENSOR2));
   Serial.print(" ");
   Serial.println(analogRead(PIN_SENSOR3));
-  #endif
-  digitalWrite(PIN_ENA, false);
-  digitalWrite( PIN_PUL, 1 );
-    delayMicroseconds(WheelAgression);
-    digitalWrite( PIN_PUL, 0 );
-    delayMicroseconds(WheelAgression);
+#endif
 
   //функция калибровки либо поворота на заданный угол
   //выставляется ниже
-  //loopFunc(0);
+  loopFunc(0);
 }
 
 void requestEvent()
 {
   byte msg[4];
   
-  #ifndef WITHOUT_RESISTOR
+#ifndef WITHOUT_RESISTOR
   UpdateWheelPostionSensor(WheelCenterPosition);
-  #else
+#else
   WheelPositionDegrees = -1;
-  #endif
+#endif
   
   msg[0] = WheelPositionDegrees >> 8;
   msg[1] = WheelPositionDegrees;
@@ -134,11 +129,11 @@ void recieveEvent(int num) {
   int value;
   unsigned char rawValue[2];
 
-  #ifndef WITHOUT_RESISTOR
+#ifndef WITHOUT_RESISTOR
   UpdateWheelPostionSensor(WheelCenterPosition);
-  #else
+#else
   WheelPositionDegrees = -1;
-  #endif
+#endif
   
   for(int i = 0; i < num - 2; i++)
   {
@@ -171,7 +166,7 @@ void recieveEvent(int num) {
   }
   else if(CENTER.equals(sCode)) 
   {
-    #ifndef WITHOUT_RESISTOR 
+#ifndef WITHOUT_RESISTOR 
     if(value == -1)
       
       WheelCenterPosition = WheelPositionDegrees;
@@ -180,9 +175,9 @@ void recieveEvent(int num) {
 
     Serial.print("Center set: ");
     Serial.println(value);
-    #else
+#else
     loopFunc = CalibrateLoop;
-    #endif
+#endif
   }
 }
 

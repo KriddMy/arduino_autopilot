@@ -7,7 +7,8 @@
 #define WHEEL_ADRESS 23
 
 class WheelStepperMotor
-{ 
+{
+  //string m_strError = L"";
   public:
   WheelStepperMotor();
   ~WheelStepperMotor();

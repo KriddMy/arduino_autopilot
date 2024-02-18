@@ -1,4 +1,7 @@
 #include "WheelStepperMotor.h"
+#include "ErrorHandler.h"
+
+extern ErrorHandler ErrHandler;
 
 WheelStepperMotor::WheelStepperMotor() {
   Wire.begin();
@@ -19,7 +22,11 @@ void WheelStepperMotor::RotateTo(int deg)
   
   Wire.beginTransmission(WHEEL_ADRESS   );
   Wire.write(msg, sizeof(msg));
-  Wire.endTransmission();
+
+  if(Wire.endTransmission() == 0)
+    ErrHandler.UnsetError(ERR_NOWHEEL_CONNECTION);
+  else
+    ErrHandler.SetError(ERR_NOWHEEL_CONNECTION);
 }
 
 void WheelStepperMotor::UpdateAgression(int agress)
@@ -32,7 +39,10 @@ void WheelStepperMotor::UpdateAgression(int agress)
   msg[4] = agress;
   Wire.beginTransmission(WHEEL_ADRESS);
   Wire.write(msg, sizeof(msg));
-  Wire.endTransmission();
+  if(Wire.endTransmission() == 0)
+    ErrHandler.UnsetError(ERR_NOWHEEL_CONNECTION);
+  else
+    ErrHandler.SetError(ERR_NOWHEEL_CONNECTION);
 }
 
 int WheelStepperMotor::GetWheelPosition()
@@ -64,7 +74,10 @@ void WheelStepperMotor::PowerSwitch(bool powerOn)
   msg[4] = powerOn;
   Wire.beginTransmission(WHEEL_ADRESS);
   Wire.write(msg, sizeof(msg));
-  Wire.endTransmission();
+  if(Wire.endTransmission() == 0)
+    ErrHandler.UnsetError(ERR_NOWHEEL_CONNECTION);
+  else
+    ErrHandler.SetError(ERR_NOWHEEL_CONNECTION);
 }
 
 int WheelStepperMotor::SetWheelCenter(int center = -1)
@@ -77,7 +90,10 @@ int WheelStepperMotor::SetWheelCenter(int center = -1)
   msg[4] = center;
   Wire.beginTransmission(WHEEL_ADRESS);
   Wire.write(msg, sizeof(msg));
-  Wire.endTransmission();
+  if(Wire.endTransmission() == 0)
+    ErrHandler.UnsetError(ERR_NOWHEEL_CONNECTION);
+  else
+    ErrHandler.SetError(ERR_NOWHEEL_CONNECTION);
   
   if(center != -1) {
     return center;
