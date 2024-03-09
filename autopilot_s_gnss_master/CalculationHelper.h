@@ -66,8 +66,8 @@ class MapPosition {
   PreciseLatitude _latitude;
   PreciseLongitude _longitude;
   
-  const float _fromMilesToMeters = 1852.107;
-  const float _fromMilesToCantimeters = _fromMilesToMeters * 100;
+  static constexpr float _fromMilesToMeters = 1852.107;
+  static constexpr float _fromMilesToCantimeters = _fromMilesToMeters * 100;
   
   public:
   MapPosition();

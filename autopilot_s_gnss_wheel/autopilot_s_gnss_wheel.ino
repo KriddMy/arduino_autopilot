@@ -275,6 +275,7 @@ void UpdateWheelPostionSensor(int center)
 
 void RotateLoop(int unused = 0)
 {
+  Serial.println("Rotate LOOP");
   if(WheelPositionCalculated != WheelPositionToGo) {
     digitalWrite( PIN_PUL, 1 );
     delayMicroseconds(WheelAgression);
@@ -286,6 +287,7 @@ void RotateLoop(int unused = 0)
 
 void CalibrateLoop(int nStackCount = 0)
 {
+  Serial.println("Calib LOOP");
   loopFunc = RotateLoop;
 
   bool sensor1 = analogRead(PIN_SENSOR1) > 512 ? false : true;

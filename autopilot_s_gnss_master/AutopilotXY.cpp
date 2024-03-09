@@ -182,10 +182,8 @@ bool AutopilotXY::UpdatePosition() {
   static bool requreRmcFlag = false;
   bool isSucceed = true;
   static unsigned long prevTime = millis();
-  //if(RemoteXY.connect_flag == 0)
-    //return false;
-
-  if(requreRmcFlag) {
+  
+   if(requreRmcFlag) {
     
     if(_gnssParser.ParseGNRMC())
     {

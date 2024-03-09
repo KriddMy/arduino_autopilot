@@ -1080,7 +1080,7 @@ float CalcultionHelper::NewRowFromPositionOpposite(char* lat, char* lon)
   if(Wire.endTransmission() == 0)
     ErrHandler.UnsetError(ERR_NOCALC_CONNECTION);
   else
-    ErrHandler.SetError(ERR_NOCALC_CONNECTION);
+    ErrHandler.SetError(ERR_NOCALC_CONNECTION); 
 
   return ReciveCalculatedValues();
 }
